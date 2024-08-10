@@ -1,7 +1,23 @@
 [package]
 name = "cargo-testdox"
 version = "0.1.0"
+authors = ["John Arundel <john@bitfieldconsulting.com>"]
 edition = "2021"
+description = """
+A Cargo subcommand to print your Rust test names as sentences.
+"""
+keywords = ["test", "testdox", "unit-tests"]
+categories = ["development-tools::testing"]
+license = "MIT OR Apache-2.0"
+readme = "README.md"
+documentation = "https://docs.rs/cargo-testdox"
+homepage = "https://github.com/bitfield/cargo-testdox"
+repository = "https://github.com/bitfield/cargo-testdox"
+exclude = ["/.github/"]
+
+[badges]
+github = { repository = "bitfield/cargo-testdox", workflow = "CI" }
+maintenance = { status = "actively-developed" }
 
 [dependencies]
 anyhow = "1.0.86"
