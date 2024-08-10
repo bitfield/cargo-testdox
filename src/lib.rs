@@ -1,3 +1,10 @@
+//! A Cargo subcommand for printing your Rust test names as sentences.
+//!
+//! Also contains functions to parse the (human-readable) output of `cargo test`,
+//! and to format test names as sentences.
+//!
+//! Further reading and context: [Test names should be
+//! sentences](https://bitfieldconsulting.com/posts/test-names).
 use anyhow::Context;
 use std::process::Command;
 
@@ -24,10 +31,15 @@ pub fn get_cargo_test_output(extra_args: Vec<String>) -> String {
 }
 
 #[must_use]
+/// Parses the standard output of `cargo test` into a vec of `TestResult`.
 pub fn parse_test_results(test_output: &str) -> Vec<TestResult> {
     test_output.lines().filter_map(parse_line).collect()
 }
 
+/// Parses a line from the standard output of `cargo test`.
+///
+/// If the line represents the result of a test, returns `Some(TestResult)`,
+/// otherwise returns `None`.
 pub fn parse_line<S: AsRef<str>>(line: S) -> Option<TestResult> {
     let line = line.as_ref().strip_prefix("test ")?;
     if line.starts_with("result") {
@@ -48,11 +60,15 @@ pub fn parse_line<S: AsRef<str>>(line: S) -> Option<TestResult> {
 }
 
 #[must_use]
+/// Formats the name of a test function as a sentence.
+///
+/// Underscores are replaced with spaces.
 pub fn prettify<S: AsRef<str>>(input: S) -> String {
     input.as_ref().replace('_', " ")
 }
 
 #[derive(Debug, PartialEq)]
+/// The (prettified) name and pass/fail status of a given test.
 pub struct TestResult {
     pub name: String,
     pub status: Status,
@@ -70,6 +86,7 @@ impl std::fmt::Display for TestResult {
 }
 
 #[derive(Debug, PartialEq)]
+/// The status of a given test, as reported by `cargo test`.
 pub enum Status {
     Pass,
     Fail,
