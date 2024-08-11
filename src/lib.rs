@@ -128,13 +128,26 @@ mod tests {
             line: &'static str,
             want: Option<TestResult>,
         }
-        let cases = Vec::from([Case {
-            line: "test foo ... ok",
-            want: Some(TestResult {
-                name: "foo".into(),
-                status: Status::Pass,
-            }),
-        }]);
+        let cases = Vec::from([
+            Case {
+                line: "    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.20s",
+                want: None,
+            },
+            Case {
+                line: "test foo ... ok",
+                want: Some(TestResult {
+                    name: "foo".into(),
+                    status: Status::Pass,
+                }),
+            },
+            Case {
+                line: "test tests::urls_correctly_extracts_valid_urls ... FAILED",
+                want: Some(TestResult {
+                    name: "urls correctly extracts valid urls".into(),
+                    status: Status::Fail,
+                }),
+            },
+        ]);
         for case in cases {
             assert_eq!(case.want, parse_line(case.line));
         }
