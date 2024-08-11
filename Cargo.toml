@@ -1,13 +1,18 @@
 [package]
 name = "cargo-testdox"
-version = "0.1.0"
+version = "0.1.1"
 authors = ["John Arundel <john@bitfieldconsulting.com>"]
 edition = "2021"
 description = """
-A Cargo subcommand to print your Rust test names as sentences.
+A Cargo subcommand to print your test names as sentences.
 """
 keywords = ["test", "testdox", "unit-tests"]
-categories = ["development-tools::testing"]
+categories = [
+  "command-line-utilities",
+  "development-tools",
+  "development-tools::cargo-plugins",
+  "development-tools::testing",
+]
 license = "MIT OR Apache-2.0"
 readme = "README.md"
 documentation = "https://docs.rs/cargo-testdox"
