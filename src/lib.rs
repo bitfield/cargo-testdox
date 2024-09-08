@@ -6,8 +6,9 @@
 //! Further reading and context: [Test names should be
 //! sentences](https://bitfieldconsulting.com/posts/test-names).
 use anyhow::Context;
-use std::process::Command;
 use colored::Colorize;
+use regex::Regex;
+use std::{process::Command, sync::LazyLock};
 
 #[must_use]
 /// Runs `cargo test` with any supplied extra arguments, and returns the
@@ -37,6 +38,8 @@ pub fn parse_test_results(test_output: &str) -> Vec<TestResult> {
     test_output.lines().filter_map(parse_line).collect()
 }
 
+static MODULE_PREFIX: LazyLock<Regex> = LazyLock::new(|| Regex::new(".*::").unwrap());
+
 /// Parses a line from the standard output of `cargo test`.
 ///
 /// If the line represents the result of a test, returns `Some(TestResult)`,
@@ -46,7 +49,7 @@ pub fn parse_line<S: AsRef<str>>(line: S) -> Option<TestResult> {
     if line.starts_with("result") {
         return None;
     }
-    let line = line.strip_prefix("tests::").unwrap_or(line);
+    let line = MODULE_PREFIX.replace(line, "");
     let splits: Vec<_> = line.split(" ... ").collect();
     let (name, result) = (splits[0], splits[1]);
     Some(TestResult {
@@ -64,13 +67,13 @@ pub fn parse_line<S: AsRef<str>>(line: S) -> Option<TestResult> {
 /// Formats the name of a test function as a sentence.
 ///
 /// Underscores are replaced with spaces. To retain the underscores in a function name, put `_fn_` after it. For example:
-/// 
+///
 /// ```text
 /// parse_line_fn_parses_a_line
 /// ```
-/// 
+///
 /// becomes:
-/// 
+///
 /// ```text
 /// parse_line parses a line
 /// ```
@@ -168,6 +171,13 @@ mod tests {
                 want: Some(TestResult {
                     name: "urls correctly extracts valid urls".into(),
                     status: Status::Fail,
+                }),
+            },
+            Case {
+                line: "test files::test::files_can_be_sorted_in_descending_order ... ignored",
+                want: Some(TestResult {
+                    name: "files can be sorted in descending order".into(),
+                    status: Status::Ignored,
                 }),
             },
         ]);
