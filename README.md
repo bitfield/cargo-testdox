@@ -49,6 +49,23 @@ If the test were ignored, it would produce:
  ? it works
 ```
 
+Doctests are ignored, since they can't currently be named (pending [RFC #3311](https://github.com/rust-lang/rfcs/pull/3311)).
+
+### Function names with underscores
+
+To avoid underscores in a snake-case function name from being replaced, put `_fn_` after the function name:
+
+```rust
+#[test]
+fn print_hello_world_fn_prints_hello_world() {}
+```
+
+becomes:
+
+```
+✔ print_hello_world prints hello world
+```
+
 ## Why
 
 Because [test names should be sentences](https://bitfieldconsulting.com/posts/test-names).

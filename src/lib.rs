@@ -46,7 +46,7 @@ static MODULE_PREFIX: LazyLock<Regex> = LazyLock::new(|| Regex::new(".*::").unwr
 /// otherwise returns `None`.
 pub fn parse_line<S: AsRef<str>>(line: S) -> Option<TestResult> {
     let line = line.as_ref().strip_prefix("test ")?;
-    if line.starts_with("result") {
+    if line.starts_with("result") || line.contains("(line ") {
         return None;
     }
     let line = MODULE_PREFIX.replace(line, "");
@@ -99,9 +99,9 @@ pub struct TestResult {
 impl std::fmt::Display for TestResult {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let status = match self.status {
-            Status::Pass => "✔".green(),
-            Status::Fail => "x".red(),
-            Status::Ignored => "?".yellow(),
+            Status::Pass => "✔".bright_green(),
+            Status::Fail => "x".bright_red(),
+            Status::Ignored => "?".bright_yellow(),
         };
         write!(f, " {status} {}", self.name)
     }
@@ -179,6 +179,10 @@ mod tests {
                     name: "files can be sorted in descending order".into(),
                     status: Status::Ignored,
                 }),
+            },
+            Case {
+                line: "test src/lib.rs - find_top_n_largest_files (line 17) ... ok",
+                want: None,
             },
         ]);
         for case in cases {
