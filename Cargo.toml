@@ -26,3 +26,4 @@ maintenance = { status = "actively-developed" }
 
 [dependencies]
 anyhow = "1.0.86"
+colored = "2.1.0"

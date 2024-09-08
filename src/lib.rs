@@ -7,6 +7,7 @@
 //! sentences](https://bitfieldconsulting.com/posts/test-names).
 use anyhow::Context;
 use std::process::Command;
+use colored::Colorize;
 
 #[must_use]
 /// Runs `cargo test` with any supplied extra arguments, and returns the
@@ -76,7 +77,6 @@ pub fn parse_line<S: AsRef<str>>(line: S) -> Option<TestResult> {
 pub fn prettify<S: AsRef<str>>(input: S) -> String {
     let mut output = String::new();
     if let Some((fn_name, sentence)) = input.as_ref().split_once("_fn_") {
-        println!("fn_name {fn_name}");
         output.push_str(fn_name);
         output.push(' ');
         output.push_str(sentence.replace('_', " ").as_ref());
@@ -96,9 +96,9 @@ pub struct TestResult {
 impl std::fmt::Display for TestResult {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let status = match self.status {
-            Status::Pass => '✔',
-            Status::Fail => 'x',
-            Status::Ignored => '?',
+            Status::Pass => "✔".green(),
+            Status::Fail => "x".red(),
+            Status::Ignored => "?".yellow(),
         };
         write!(f, " {status} {}", self.name)
     }
