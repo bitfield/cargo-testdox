@@ -22,6 +22,8 @@ In any Rust project with tests, run:
 cargo testdox
 ```
 
+![Animated demo](img/demo.gif)
+
 `cargo-testdox` will first invoke `cargo test` to run your tests, with any extra arguments that you give it. It will then show the result for each test (passed, failed, or ignored), with the test name formatted as a sentence. That is, with underscores replaced by spaces.
 
 For example, the following test:
