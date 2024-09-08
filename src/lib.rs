@@ -62,9 +62,28 @@ pub fn parse_line<S: AsRef<str>>(line: S) -> Option<TestResult> {
 #[must_use]
 /// Formats the name of a test function as a sentence.
 ///
-/// Underscores are replaced with spaces.
+/// Underscores are replaced with spaces. To retain the underscores in a function name, put `_fn_` after it. For example:
+/// 
+/// ```text
+/// parse_line_fn_parses_a_line
+/// ```
+/// 
+/// becomes:
+/// 
+/// ```text
+/// parse_line parses a line
+/// ```
 pub fn prettify<S: AsRef<str>>(input: S) -> String {
-    input.as_ref().replace('_', " ")
+    let mut output = String::new();
+    if let Some((fn_name, sentence)) = input.as_ref().split_once("_fn_") {
+        println!("fn_name {fn_name}");
+        output.push_str(fn_name);
+        output.push(' ');
+        output.push_str(sentence.replace('_', " ").as_ref());
+    } else {
+        output.push_str(input.as_ref().replace('_', " ").as_ref());
+    }
+    output
 }
 
 #[derive(Debug, PartialEq)]
@@ -116,6 +135,10 @@ mod tests {
                 input: "single",
                 want: "single".into(),
             },
+            Case {
+                input: "parse_line_fn_does_stuff",
+                want: "parse_line does stuff".into(),
+            },
         ]);
         for case in cases {
             assert_eq!(case.want, prettify(case.input));
@@ -123,7 +146,7 @@ mod tests {
     }
 
     #[test]
-    fn parse_line_returns_expected_result() {
+    fn parse_line_fn_returns_expected_result() {
         struct Case {
             line: &'static str,
             want: Option<TestResult>,
