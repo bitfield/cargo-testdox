@@ -73,3 +73,7 @@ becomes:
 Because [test names should be sentences](https://bitfieldconsulting.com/posts/test-names).
 
 Compare [`gotestdox`](https://github.com/bitfield/gotestdox), a similar tool for Go tests.
+
+This is an example project from my book [The Secrets of Rust: Tools](https://bitfieldconsulting.com/books/rust-tools).
+
+[![Secrets of Rust: Tools cover image](img/cover.png)](https://bitfieldconsulting.com/books/rust-tools)
