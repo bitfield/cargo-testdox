@@ -38,7 +38,7 @@ pub fn parse_test_results(test_output: &str) -> Vec<TestResult> {
     test_output.lines().filter_map(parse_line).collect()
 }
 
-static MODULE_PREFIX: LazyLock<Regex> = LazyLock::new(|| Regex::new(".*::").unwrap());
+static MODULE_PREFIX: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"^((?:\w+::)+)").unwrap());
 
 /// Parses a line from the standard output of `cargo test`.
 ///
@@ -49,10 +49,21 @@ pub fn parse_line<S: AsRef<str>>(line: S) -> Option<TestResult> {
     if line.starts_with("result") || line.contains("(line ") {
         return None;
     }
-    let line = MODULE_PREFIX.replace(line, "");
+
+    let (module, line) = match MODULE_PREFIX.captures(line) {
+        Some(captures) => {
+            let prefix = &captures[1];
+            let module = prefix.strip_suffix("::")?;
+            let line = line.strip_prefix(prefix)?;
+            (Some(module.to_string()), line)
+        }
+        None => (None, line),
+    };
+
     let splits: Vec<_> = line.split(" ... ").collect();
     let (name, result) = (splits[0], splits[1]);
     Some(TestResult {
+        module,
         name: prettify(name),
         status: match result {
             "ok" => Status::Pass,
@@ -92,18 +103,17 @@ pub fn prettify<S: AsRef<str>>(input: S) -> String {
 #[derive(Debug, PartialEq)]
 /// The (prettified) name and pass/fail status of a given test.
 pub struct TestResult {
+    pub module: Option<String>,
     pub name: String,
     pub status: Status,
 }
 
 impl std::fmt::Display for TestResult {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let status = match self.status {
-            Status::Pass => "✔".bright_green(),
-            Status::Fail => "x".bright_red(),
-            Status::Ignored => "?".bright_yellow(),
-        };
-        write!(f, " {status} {}", self.name)
+        match &self.module {
+            Some(module) => write!(f, "{} {module} {}", self.status, self.name),
+            None => write!(f, "{} {}", self.status, self.name),
+        }
     }
 }
 
@@ -113,6 +123,17 @@ pub enum Status {
     Pass,
     Fail,
     Ignored,
+}
+
+impl std::fmt::Display for Status {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let symbol = match self {
+            Status::Pass => "✔".bright_green(),
+            Status::Fail => "x".bright_red(),
+            Status::Ignored => "?".bright_yellow(),
+        };
+        write!(f, "{symbol}")
+    }
 }
 
 #[cfg(test)]
@@ -162,6 +183,7 @@ mod tests {
             Case {
                 line: "test foo ... ok",
                 want: Some(TestResult {
+                    module: None,
                     name: "foo".into(),
                     status: Status::Pass,
                 }),
@@ -169,6 +191,7 @@ mod tests {
             Case {
                 line: "test tests::urls_correctly_extracts_valid_urls ... FAILED",
                 want: Some(TestResult {
+                    module: Some("tests".into()),
                     name: "urls correctly extracts valid urls".into(),
                     status: Status::Fail,
                 }),
@@ -176,6 +199,7 @@ mod tests {
             Case {
                 line: "test files::test::files_can_be_sorted_in_descending_order ... ignored",
                 want: Some(TestResult {
+                    module: Some("files::test".into()),
                     name: "files can be sorted in descending order".into(),
                     status: Status::Ignored,
                 }),
