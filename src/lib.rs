@@ -5,7 +5,7 @@
 //!
 //! Further reading and context: [Test names should be
 //! sentences](https://bitfieldconsulting.com/posts/test-names).
-use anyhow::Context;
+use anyhow::{anyhow, Context};
 use colored::Colorize;
 use regex::Regex;
 use std::{process::Command, sync::LazyLock};
@@ -38,7 +38,9 @@ pub fn parse_test_results(test_output: &str) -> Vec<TestResult> {
     test_output.lines().filter_map(parse_line).collect()
 }
 
-static MODULE_PREFIX: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"^((?:\w+::)+)").unwrap());
+static TEST_RESULT: LazyLock<Regex> = LazyLock::new(|| {
+    Regex::new(r"^(?<module>(?:\w+::)+)?(?<test>\w+)\s+\.\.\.\s+(?<status>\w+)").unwrap()
+});
 
 /// Parses a line from the standard output of `cargo test`.
 ///
@@ -50,27 +52,17 @@ pub fn parse_line<S: AsRef<str>>(line: S) -> Option<TestResult> {
         return None;
     }
 
-    let (module, line) = match MODULE_PREFIX.captures(line) {
-        Some(captures) => {
-            let prefix = &captures[1];
-            let module = prefix.strip_suffix("::")?;
-            let line = line.strip_prefix(prefix)?;
-            (Some(module.to_string()), line)
-        }
-        None => (None, line),
-    };
+    let captures = TEST_RESULT.captures(line)?;
+    let module = captures
+        .name("module")
+        .map(|m| m.as_str().trim_end_matches("::").to_string());
+    let name = prettify(&captures["test"]);
+    let status = captures["status"].parse().ok()?;
 
-    let splits: Vec<_> = line.split(" ... ").collect();
-    let (name, result) = (splits[0], splits[1]);
     Some(TestResult {
         module,
-        name: prettify(name),
-        status: match result {
-            "ok" => Status::Pass,
-            "FAILED" => Status::Fail,
-            "ignored" => Status::Ignored,
-            _ => todo!("unhandled test status {:?}", result),
-        },
+        name,
+        status,
     })
 }
 
@@ -123,6 +115,19 @@ pub enum Status {
     Pass,
     Fail,
     Ignored,
+}
+
+impl std::str::FromStr for Status {
+    type Err = anyhow::Error;
+
+    fn from_str(status: &str) -> Result<Self, Self::Err> {
+        match status {
+            "ok" => Ok(Status::Pass),
+            "FAILED" => Ok(Status::Fail),
+            "ignored" => Ok(Status::Ignored),
+            _ => Err(anyhow!("unhandled test status {status:?}")),
+        }
+    }
 }
 
 impl std::fmt::Display for Status {
