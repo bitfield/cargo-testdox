@@ -127,12 +127,12 @@ pub enum Status {
 
 impl std::fmt::Display for Status {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let symbol = match self {
+        let status = match self {
             Status::Pass => "✔".bright_green(),
             Status::Fail => "x".bright_red(),
             Status::Ignored => "?".bright_yellow(),
         };
-        write!(f, "{symbol}")
+        write!(f, "{status}")
     }
 }
 
