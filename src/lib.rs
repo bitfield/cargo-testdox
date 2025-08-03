@@ -75,15 +75,19 @@ pub fn parse_line<S: AsRef<str>>(line: S) -> Option<TestResult> {
 /// ```
 pub fn prettify<S: AsRef<str>>(input: S) -> String {
     if let Some((fn_name, sentence)) = input.as_ref().split_once("_fn_") {
-        format!("{} {}", fn_name, sentence.replace('_', " "))
+        format!("{} {}", fn_name, humanize(sentence))
     } else {
-        input
-            .as_ref()
-            .replace('_', " ")
-            .split_whitespace()
-            .collect::<Vec<&str>>()
-            .join(" ")
+        humanize(input)
     }
+}
+
+fn humanize<S: AsRef<str>>(input: S) -> String {
+    input
+        .as_ref()
+        .replace('_', " ")
+        .split_whitespace()
+        .collect::<Vec<&str>>()
+        .join(" ")
 }
 
 #[derive(Debug, PartialEq)]
@@ -164,6 +168,10 @@ mod tests {
             },
             Case {
                 input: "prettify__handles_multiple_underscores",
+                want: "prettify handles multiple underscores".into(),
+            },
+            Case {
+                input: "prettify_fn__handles_multiple_underscores",
                 want: "prettify handles multiple underscores".into(),
             },
         ]);
