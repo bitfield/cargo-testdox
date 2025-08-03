@@ -7,8 +7,7 @@
 //! sentences](https://bitfieldconsulting.com/posts/test-names).
 use anyhow::{anyhow, Context};
 use colored::Colorize;
-use regex::Regex;
-use std::{process::Command, sync::LazyLock};
+use std::process::Command;
 
 #[must_use]
 /// Runs `cargo test` with any supplied extra arguments, and returns the
@@ -38,10 +37,6 @@ pub fn parse_test_results(test_output: &str) -> Vec<TestResult> {
     test_output.lines().filter_map(parse_line).collect()
 }
 
-static TEST_RESULT: LazyLock<Regex> = LazyLock::new(|| {
-    Regex::new(r"^(?<module>(?:\w+::)+)?(?<test>\w+)\s+\.\.\.\s+(?<status>\w+)").unwrap()
-});
-
 /// Parses a line from the standard output of `cargo test`.
 ///
 /// If the line represents the result of a test, returns `Some(TestResult)`,
@@ -52,17 +47,15 @@ pub fn parse_line<S: AsRef<str>>(line: S) -> Option<TestResult> {
         return None;
     }
 
-    let captures = TEST_RESULT.captures(line)?;
-    let module = captures
-        .name("module")
-        .map(|m| m.as_str().trim_end_matches("::").to_string());
-    let name = prettify(&captures["test"]);
-    let status = captures["status"].parse().ok()?;
-
+    let (test, status) = line.split_once(" ... ")?;
+    let (module, name) = match test.rsplit_once("::") {
+        Some((module, name)) => (Some(module.to_string()), name),
+        None => (None, test),
+    };
     Some(TestResult {
         module,
-        name,
-        status,
+        name: prettify(name),
+        status: status.parse().ok()?,
     })
 }
 
@@ -81,15 +74,16 @@ pub fn parse_line<S: AsRef<str>>(line: S) -> Option<TestResult> {
 /// parse_line parses a line
 /// ```
 pub fn prettify<S: AsRef<str>>(input: S) -> String {
-    let mut output = String::new();
     if let Some((fn_name, sentence)) = input.as_ref().split_once("_fn_") {
-        output.push_str(fn_name);
-        output.push(' ');
-        output.push_str(sentence.replace('_', " ").as_ref());
+        format!("{} {}", fn_name, sentence.replace('_', " "))
     } else {
-        output.push_str(input.as_ref().replace('_', " ").as_ref());
+        input
+            .as_ref()
+            .replace('_', " ")
+            .split_whitespace()
+            .collect::<Vec<&str>>()
+            .join(" ")
     }
-    output
 }
 
 #[derive(Debug, PartialEq)]
@@ -168,6 +162,10 @@ mod tests {
                 input: "parse_line_fn_does_stuff",
                 want: "parse_line does stuff".into(),
             },
+            Case {
+                input: "prettify__handles_multiple_underscores",
+                want: "prettify handles multiple underscores".into(),
+            },
         ]);
         for case in cases {
             assert_eq!(case.want, prettify(case.input));
@@ -212,6 +210,14 @@ mod tests {
             Case {
                 line: "test src/lib.rs - find_top_n_largest_files (line 17) ... ok",
                 want: None,
+            },
+            Case {
+                line: "test output_format::_concise_expects ... ok",
+                want: Some(TestResult {
+                    module: Some("output_format".into()),
+                    name: "concise expects".into(),
+                    status: Status::Pass,
+                }),
             },
         ]);
         for case in cases {
