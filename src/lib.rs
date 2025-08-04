@@ -7,7 +7,7 @@
 //! sentences](https://bitfieldconsulting.com/posts/test-names).
 use anyhow::{anyhow, Context};
 use colored::Colorize;
-use std::process::Command;
+use std::{fmt::Display, process::Command, str::FromStr};
 
 #[must_use]
 /// Runs `cargo test` with any supplied extra arguments, and returns the
@@ -98,7 +98,7 @@ pub struct TestResult {
     pub status: Status,
 }
 
-impl std::fmt::Display for TestResult {
+impl Display for TestResult {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match &self.module {
             Some(module) => write!(f, "{} {module} {}", self.status, self.name),
@@ -115,7 +115,7 @@ pub enum Status {
     Ignored,
 }
 
-impl std::str::FromStr for Status {
+impl FromStr for Status {
     type Err = anyhow::Error;
 
     fn from_str(status: &str) -> Result<Self, Self::Err> {
@@ -128,7 +128,7 @@ impl std::str::FromStr for Status {
     }
 }
 
-impl std::fmt::Display for Status {
+impl Display for Status {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let status = match self {
             Status::Pass => "✔".bright_green(),
