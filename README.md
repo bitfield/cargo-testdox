@@ -51,6 +51,12 @@ If the test were ignored, it would produce:
  ? it works
 ```
 
+If the test were in a module `foo`, it would produce:
+
+```
+ ✔ foo it works
+```
+
 Doctests are ignored, since they can't currently be named (pending [RFC #3311](https://github.com/rust-lang/rfcs/pull/3311)).
 
 ### Function names with underscores
