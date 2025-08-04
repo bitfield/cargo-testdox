@@ -41,7 +41,7 @@ pub fn parse_test_results(test_output: &str) -> Vec<TestResult> {
 ///
 /// If the line represents the result of a test, returns `Some(TestResult)`,
 /// otherwise returns `None`.
-pub fn parse_line<S: AsRef<str>>(line: S) -> Option<TestResult> {
+pub fn parse_line(line: impl AsRef<str>) -> Option<TestResult> {
     let line = line.as_ref().strip_prefix("test ")?;
     if line.starts_with("result") || line.contains("(line ") {
         return None;
@@ -73,7 +73,7 @@ pub fn parse_line<S: AsRef<str>>(line: S) -> Option<TestResult> {
 /// ```text
 /// parse_line parses a line
 /// ```
-pub fn prettify<S: AsRef<str>>(input: S) -> String {
+pub fn prettify(input: impl AsRef<str>) -> String {
     if let Some((fn_name, sentence)) = input.as_ref().split_once("_fn_") {
         format!("{} {}", fn_name, humanize(sentence))
     } else {
@@ -81,7 +81,7 @@ pub fn prettify<S: AsRef<str>>(input: S) -> String {
     }
 }
 
-fn humanize<S: AsRef<str>>(input: S) -> String {
+fn humanize(input: impl AsRef<str>) -> String {
     input
         .as_ref()
         .replace('_', " ")
