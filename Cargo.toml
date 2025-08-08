@@ -1,6 +1,6 @@
 [package]
 name = "cargo-testdox"
-version = "0.2.1"
+version = "0.3.0"
 authors = ["John Arundel <john@bitfieldconsulting.com>"]
 edition = "2021"
 description = """
@@ -8,10 +8,10 @@ A Cargo subcommand to print your test names as sentences.
 """
 keywords = ["test", "testdox", "unit-tests"]
 categories = [
-  "command-line-utilities",
-  "development-tools",
-  "development-tools::cargo-plugins",
-  "development-tools::testing",
+    "command-line-utilities",
+    "development-tools",
+    "development-tools::cargo-plugins",
+    "development-tools::testing",
 ]
 license = "MIT OR Apache-2.0"
 readme = "README.md"

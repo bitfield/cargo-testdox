@@ -28,33 +28,39 @@ cargo testdox
 
 For example, the following test:
 
-```rust
+```rust,ignore
 #[test]
 fn it_works() {}
 ```
 
 will produce this output when run with `cargo-testdox`:
 
-```
+```txt
  ✔ it works
 ```
 
 If the test were failing, it would produce:
 
-```
+```txt
  x it works
 ```
 
 If the test were ignored, it would produce:
 
-```
+```txt
  ? it works
 ```
 
-If the test were in a module `foo`, it would produce:
+If the test were in a module `foo::bar`, it would produce:
 
+```txt
+ ✔ foo::bar — it works
 ```
- ✔ foo it works
+
+However, if the module path ends with `test` or `tests`, this part is omitted, and the name of the parent module (if there is one) is used instead. For example, if the module is `foo::tests`:
+
+```txt
+ ✔ foo — it works
 ```
 
 Doctests are ignored, since they can't currently be named (pending [RFC #3311](https://github.com/rust-lang/rfcs/pull/3311)).
@@ -63,14 +69,14 @@ Doctests are ignored, since they can't currently be named (pending [RFC #3311](h
 
 To avoid underscores in a snake-case function name from being replaced, put `_fn_` after the function name:
 
-```rust
+```rust,ignore
 #[test]
 fn print_hello_world_fn_prints_hello_world() {}
 ```
 
 becomes:
 
-```
+```txt
 ✔ print_hello_world prints hello world
 ```
 
