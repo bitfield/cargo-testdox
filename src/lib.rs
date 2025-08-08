@@ -1,10 +1,4 @@
-//! A Cargo subcommand for printing your Rust test names as sentences.
-//!
-//! Also contains functions to parse the (human-readable) output of `cargo test`,
-//! and to format test names as sentences.
-//!
-//! Further reading and context: [Test names should be
-//! sentences](https://bitfieldconsulting.com/posts/test-names).
+#![doc = include_str!("../README.md")]
 use anyhow::{anyhow, Context};
 use colored::Colorize;
 use std::{fmt::Display, process::Command, str::FromStr};
