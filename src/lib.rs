@@ -49,7 +49,7 @@ pub fn parse_line(line: impl AsRef<str>) -> Option<TestResult> {
 
     let (test, status) = line.split_once(" ... ")?;
     let (module, name) = match test.rsplit_once("::") {
-        Some((module, name)) => (Some(module.to_string()), name),
+        Some((module, name)) => (prettify_module(module), name),
         None => (None, test),
     };
     Some(TestResult {
@@ -90,6 +90,15 @@ fn humanize(input: impl AsRef<str>) -> String {
         .join(" ")
 }
 
+fn prettify_module(module: &str) -> Option<String> {
+    let mut parts = module.split("::").collect::<Vec<_>>();
+    parts.pop_if(|&mut s| s == "tests" || s == "test");
+    if parts.is_empty() {
+        return None;
+    }
+    Some(parts.join("::"))
+}
+
 #[derive(Debug, PartialEq)]
 /// The (prettified) name and pass/fail status of a given test.
 pub struct TestResult {
@@ -101,7 +110,13 @@ pub struct TestResult {
 impl Display for TestResult {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match &self.module {
-            Some(module) => write!(f, "{} {module} {}", self.status, self.name),
+            Some(module) => write!(
+                f,
+                "{} {} – {}",
+                self.status,
+                module.bright_blue(),
+                self.name
+            ),
             None => write!(f, "{} {}", self.status, self.name),
         }
     }
@@ -200,9 +215,17 @@ mod tests {
                 }),
             },
             Case {
+                line: "test foo::tests::does_foo_stuff ... ok",
+                want: Some(TestResult {
+                    module: Some("foo".into()),
+                    name: "does foo stuff".into(),
+                    status: Status::Pass,
+                }),
+            },
+            Case {
                 line: "test tests::urls_correctly_extracts_valid_urls ... FAILED",
                 want: Some(TestResult {
-                    module: Some("tests".into()),
+                    module: None,
                     name: "urls correctly extracts valid urls".into(),
                     status: Status::Fail,
                 }),
@@ -210,7 +233,23 @@ mod tests {
             Case {
                 line: "test files::test::files_can_be_sorted_in_descending_order ... ignored",
                 want: Some(TestResult {
-                    module: Some("files::test".into()),
+                    module: Some("files".into()),
+                    name: "files can be sorted in descending order".into(),
+                    status: Status::Ignored,
+                }),
+            },
+            Case {
+                line: "test files::test::foo::tests::files_can_be_sorted_in_descending_order ... ignored",
+                want: Some(TestResult {
+                    module: Some("files::test::foo".into()),
+                    name: "files can be sorted in descending order".into(),
+                    status: Status::Ignored,
+                }),
+            },
+            Case {
+                line: "test files::test_foo::files_can_be_sorted_in_descending_order ... ignored",
+                want: Some(TestResult {
+                    module: Some("files::test_foo".into()),
                     name: "files can be sorted in descending order".into(),
                     status: Status::Ignored,
                 }),
