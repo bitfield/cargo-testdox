@@ -23,11 +23,15 @@ pub fn get_cargo_test_output(extra_args: Vec<String>) -> String {
         cargo.arg("--");
         cargo.args(extra_args);
     }
-    let raw_output = cargo
+    let output = cargo
         .output()
         .context(format!("{cargo:?}"))
-        .expect("executing command should succeed")
-        .stdout;
+        .expect("executing command should succeed");
+    let raw_output = output.stdout;
+    let stderr_output = output.stderr;
+    if !stderr_output.is_empty() {
+        eprintln!("{}", String::from_utf8_lossy(&stderr_output));
+    }
     String::from_utf8_lossy(&raw_output).to_string()
 }
 
