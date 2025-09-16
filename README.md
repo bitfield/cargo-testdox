@@ -4,6 +4,8 @@
 ![Audit](https://github.com/bitfield/cargo-testdox/actions/workflows/audit.yml/badge.svg)
 ![Maintenance](https://img.shields.io/badge/maintenance-actively--developed-brightgreen.svg)
 
+[Subscribe to learn Rust with me!](https://bitfieldconsulting.com/subscribe)
+
 # cargo-testdox
 
 A Cargo subcommand to print your Rust test names as sentences.
