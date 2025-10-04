@@ -14,7 +14,6 @@ pub fn get_cargo_test_output(extra_args: Vec<String>) -> String {
     let mut cargo = Command::new("cargo");
     cargo.arg("test");
     if !extra_args.is_empty() {
-        cargo.arg("--");
         cargo.args(extra_args);
     }
     let raw_output = cargo
