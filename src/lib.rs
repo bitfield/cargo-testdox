@@ -13,9 +13,7 @@ use std::{fmt::Display, process::Command, str::FromStr};
 pub fn get_cargo_test_output(extra_args: Vec<String>) -> String {
     let mut cargo = Command::new("cargo");
     cargo.arg("test");
-    if !extra_args.is_empty() {
-        cargo.args(extra_args);
-    }
+    cargo.args(extra_args);
     let raw_output = cargo
         .output()
         .context(format!("{cargo:?}"))
