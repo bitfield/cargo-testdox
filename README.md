@@ -8,6 +8,8 @@
 
 # cargo-testdox
 
+![cargo-testdox logo](img/logo.png)
+
 A Cargo subcommand to print your Rust test names as sentences.
 
 ## Installation
