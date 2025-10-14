@@ -24,6 +24,7 @@ pub fn get_cargo_test_output(extra_args: Vec<String>) -> String {
 
 #[must_use]
 /// Parses the standard output of `cargo test` into a vec of `TestResult`.
+///
 /// Results are returned sorted by module, name, and status for better readability.
 pub fn parse_test_results(test_output: &str) -> Vec<TestResult> {
     let mut results: Vec<TestResult> = test_output.lines().filter_map(parse_line).collect();
@@ -281,6 +282,11 @@ mod tests {
                 status: Status::Fail,
             },
             TestResult {
+                module: None,
+                name: "alpha".into(),
+                status: Status::Pass,
+            },
+            TestResult {
                 module: Some("alpha".into()),
                 name: "beta".into(),
                 status: Status::Ignored,
@@ -291,10 +297,13 @@ mod tests {
                 status: Status::Pass,
             },
         ];
-
         results.sort();
-
         let expected = vec![
+            TestResult {
+                module: None,
+                name: "alpha".into(),
+                status: Status::Pass,
+            },
             TestResult {
                 module: None,
                 name: "alpha".into(),
@@ -316,10 +325,6 @@ mod tests {
                 status: Status::Pass,
             },
         ];
-
-        assert_eq!(
-            results, expected,
-            "test results should be sorted by module, then name, then status"
-        );
+        assert_eq!(results, expected, "wrong order");
     }
 }
