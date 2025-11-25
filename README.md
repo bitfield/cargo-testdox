@@ -55,6 +55,12 @@ If the test were ignored, it would produce:
  ? it works
 ```
 
+If the test were ignored with a reason (`[ignore = "expensive"]`), it would produce:
+
+```txt
+ ? [expensive] it works
+```
+
 If the test were in a module `foo::bar`, it would produce:
 
 ```txt

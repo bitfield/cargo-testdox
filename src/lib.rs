@@ -122,7 +122,7 @@ impl Display for TestResult {
 pub enum Status {
     Pass,
     Fail,
-    Ignored,
+    Ignored(Option<String>),
 }
 
 impl FromStr for Status {
@@ -132,8 +132,14 @@ impl FromStr for Status {
         match status {
             "ok" => Ok(Status::Pass),
             "FAILED" => Ok(Status::Fail),
-            "ignored" => Ok(Status::Ignored),
-            _ => Err(anyhow!("unhandled test status {status:?}")),
+            "ignored" => Ok(Status::Ignored(None)),
+            _ => {
+                if let Some((_, reason)) = status.split_once(", ") {
+                    Ok(Status::Ignored(Some(reason.to_string())))
+                } else {
+                    Err(anyhow!("unhandled test status {status:?}"))
+                }
+            }
         }
     }
 }
@@ -143,7 +149,8 @@ impl Display for Status {
         let status = match self {
             Status::Pass => "✔".bright_green(),
             Status::Fail => "x".bright_red(),
-            Status::Ignored => "?".bright_yellow(),
+            Status::Ignored(None) => "?".bright_yellow(),
+            Status::Ignored(Some(reason)) => format!("? [{reason}]").bright_yellow(),
         };
         write!(f, "{status}")
     }
@@ -230,7 +237,7 @@ mod tests {
                 want: Some(TestResult {
                     module: Some("files".into()),
                     name: "files can be sorted in descending order".into(),
-                    status: Status::Ignored,
+                    status: Status::Ignored(None),
                 }),
             },
             Case {
@@ -238,7 +245,7 @@ mod tests {
                 want: Some(TestResult {
                     module: Some("files::test::foo".into()),
                     name: "files can be sorted in descending order".into(),
-                    status: Status::Ignored,
+                    status: Status::Ignored(None),
                 }),
             },
             Case {
@@ -246,7 +253,15 @@ mod tests {
                 want: Some(TestResult {
                     module: Some("files::test_foo".into()),
                     name: "files can be sorted in descending order".into(),
-                    status: Status::Ignored,
+                    status: Status::Ignored(None),
+                }),
+            },
+            Case {
+                line: "test tests::pi_to_1m_digits ... ignored, expensive test",
+                want: Some(TestResult {
+                    module: None,
+                    name: "pi to 1m digits".into(),
+                    status: Status::Ignored(Some("expensive test".into())),
                 }),
             },
             Case {
@@ -289,7 +304,7 @@ mod tests {
             TestResult {
                 module: Some("alpha".into()),
                 name: "beta".into(),
-                status: Status::Ignored,
+                status: Status::Ignored(None),
             },
             TestResult {
                 module: Some("alpha".into()),
@@ -317,7 +332,7 @@ mod tests {
             TestResult {
                 module: Some("alpha".into()),
                 name: "beta".into(),
-                status: Status::Ignored,
+                status: Status::Ignored(None),
             },
             TestResult {
                 module: Some("zeta".into()),

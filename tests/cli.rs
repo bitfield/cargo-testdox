@@ -11,5 +11,18 @@ fn passing_include_ignored_flag_runs_ignored_tests() {
         .arg("--include-ignored")
         .assert()
         .success()
-        .stdout(predicate::eq("✔ ignored test\n"));
+        .stdout(predicate::str::contains("✔ ignored test\n"));
+}
+
+#[test]
+fn cli_reports_ignore_reason() {
+    Command::cargo_bin("cargo-testdox")
+        .unwrap()
+        .current_dir("testdata/testproj")
+        .arg("testdox")
+        .assert()
+        .success()
+        .stdout(predicate::str::contains(
+            "? [expensive test] pi to 1m digits\n",
+        ));
 }
