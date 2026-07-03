@@ -1,6 +1,7 @@
 #![doc = include_str!("../README.md")]
-use anyhow::{anyhow, Context};
+use anyhow::anyhow;
 use colored::Colorize;
+use std::io::{self, Read};
 use std::{fmt::Display, process::Command, str::FromStr};
 
 #[must_use]
@@ -11,33 +12,104 @@ use std::{fmt::Display, process::Command, str::FromStr};
 ///
 /// If executing the `cargo test` command fails.
 pub fn get_cargo_test_output(extra_args: Vec<String>) -> String {
-    let mut cargo = Command::new("cargo");
-    cargo.arg("test");
-    cargo.args(extra_args);
-    let raw_output = cargo
-        .output()
-        .context(format!("{cargo:?}"))
-        .expect("executing command should succeed")
-        .stdout;
-    String::from_utf8_lossy(&raw_output).to_string()
+    let (mut reader, writer) = io::pipe().expect("failed to build pipe");
+
+    let mut cargo = Command::new("cargo")
+        .arg("test")
+        .args(extra_args)
+        .stdout(writer.try_clone().expect("failed to clone pipe"))
+        .stderr(writer)
+        .spawn()
+        .expect("failed to execute child");
+
+    let mut output = String::new();
+    reader
+        .read_to_string(&mut output)
+        .expect("failed to read output");
+
+    cargo.wait().expect("failed to execute command");
+
+    output
 }
 
 #[must_use]
-/// Parses the standard output of `cargo test` into a vec of `TestResult`.
+/// Parses the standard output of `cargo test` into a vec of `TestGroup`.
 ///
 /// Results are returned sorted by module, name, and status for better readability.
-pub fn parse_test_results(test_output: &str) -> Vec<TestResult> {
-    let mut results: Vec<TestResult> = test_output.lines().filter_map(parse_line).collect();
-    results.sort();
-    results
+pub fn parse_test_results(test_output: &str) -> Vec<TestGroup> {
+    let lines: Vec<Line> = test_output.lines().filter_map(parse_line).collect();
+
+    let mut test_groups = vec![];
+    let mut index = 0;
+    for line in lines {
+        match line {
+            Line::Location { path, test_type } => {
+                let test_group = TestGroup::new(path, test_type);
+                test_groups.push(test_group);
+                index = test_groups.len() - 1;
+            }
+            Line::Test(test_result) => {
+                test_groups[index].tests.push(test_result);
+            }
+        }
+    }
+
+    for group in &mut test_groups {
+        group.tests.sort();
+    }
+
+    test_groups
+}
+
+#[derive(Debug, PartialEq)]
+/// Indicates type of tests - unit or integration.
+pub enum TestType {
+    // unit test
+    Unit,
+    // integration test
+    Integration,
+}
+
+#[derive(Debug, PartialEq)]
+/// Type of parsed line - test or location of tests suite.
+pub enum Line {
+    // represents a parsed line with test info
+    Test(TestResult),
+    // represents a parsed line with tests suite info
+    Location { path: String, test_type: TestType },
 }
 
 /// Parses a line from the standard output of `cargo test`.
 ///
-/// If the line represents the result of a test, returns `Some(TestResult)`,
+/// If the line represents the result of a test or location, returns `Some(Line)`,
 /// otherwise returns `None`.
-pub fn parse_line(line: impl AsRef<str>) -> Option<TestResult> {
-    let line = line.as_ref().strip_prefix("test ")?;
+pub fn parse_line(line: impl AsRef<str>) -> Option<Line> {
+    let line = &line.as_ref().trim_start();
+
+    if line.starts_with("Running unittests") {
+        let ar: Vec<&str> = line.split(" ").collect();
+        let mut iter = ar.iter();
+        iter.next();
+        iter.next();
+        let path = iter.next().expect("path to be a third item");
+        return Some(Line::Location {
+            path: path.to_string(),
+            test_type: TestType::Unit,
+        });
+    }
+
+    if line.starts_with("Running") {
+        let ar: Vec<&str> = line.split(" ").collect();
+        let mut iter = ar.iter();
+        iter.next();
+        let path = iter.next().expect("path to be a second item");
+        return Some(Line::Location {
+            path: path.to_string(),
+            test_type: TestType::Integration,
+        });
+    }
+
+    let line = line.strip_prefix("test ")?;
     if line.starts_with("result") || line.contains("(line ") {
         return None;
     }
@@ -47,11 +119,12 @@ pub fn parse_line(line: impl AsRef<str>) -> Option<TestResult> {
         Some((module, name)) => (prettify_module(module), name),
         None => (None, test),
     };
-    Some(TestResult {
+
+    Some(Line::Test(TestResult {
         module,
         name: prettify(name),
         status: status.parse().ok()?,
-    })
+    }))
 }
 
 #[must_use]
@@ -92,6 +165,41 @@ fn prettify_module(module: &str) -> Option<String> {
         return None;
     }
     Some(parts.join("::"))
+}
+
+#[derive(Debug)]
+/// Serves for grouping test in one structure with location of tests suite and tests type (unit or
+/// integration).
+pub struct TestGroup {
+    // location of tests suite
+    loc: String,
+    #[allow(unused)]
+    // tests type - unit or integration
+    test_type: TestType,
+    // test results
+    tests: Vec<TestResult>,
+}
+
+impl TestGroup {
+    /// Builds new Test group with given location and tests type (unit or integration).
+    pub fn new(loc: String, test_type: TestType) -> Self {
+        Self {
+            loc,
+            test_type,
+            tests: vec![],
+        }
+    }
+
+    /// Returns test results.
+    pub fn tests(&self) -> &Vec<TestResult> {
+        &self.tests
+    }
+}
+
+impl Display for TestGroup {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", &self.loc)
+    }
 }
 
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord)]
@@ -201,7 +309,7 @@ mod tests {
     fn parse_line_fn_returns_expected_result() {
         struct Case {
             line: &'static str,
-            want: Option<TestResult>,
+            want: Option<Line>,
         }
         let cases = Vec::from([
             Case {
@@ -210,59 +318,59 @@ mod tests {
             },
             Case {
                 line: "test foo ... ok",
-                want: Some(TestResult {
+                want: Some(Line::Test(TestResult {
                     module: None,
                     name: "foo".into(),
                     status: Status::Pass,
-                }),
+                })),
             },
             Case {
                 line: "test foo::tests::does_foo_stuff ... ok",
-                want: Some(TestResult {
+                want: Some(Line::Test(TestResult {
                     module: Some("foo".into()),
                     name: "does foo stuff".into(),
                     status: Status::Pass,
-                }),
+                })),
             },
             Case {
                 line: "test tests::urls_correctly_extracts_valid_urls ... FAILED",
-                want: Some(TestResult {
+                want: Some(Line::Test(TestResult {
                     module: None,
                     name: "urls correctly extracts valid urls".into(),
                     status: Status::Fail,
-                }),
+                })),
             },
             Case {
                 line: "test files::test::files_can_be_sorted_in_descending_order ... ignored",
-                want: Some(TestResult {
+                want: Some(Line::Test(TestResult {
                     module: Some("files".into()),
                     name: "files can be sorted in descending order".into(),
                     status: Status::Ignored(None),
-                }),
+                })),
             },
             Case {
                 line: "test files::test::foo::tests::files_can_be_sorted_in_descending_order ... ignored",
-                want: Some(TestResult {
+                want: Some(Line::Test(TestResult {
                     module: Some("files::test::foo".into()),
                     name: "files can be sorted in descending order".into(),
                     status: Status::Ignored(None),
-                }),
+                })),
             },
             Case {
                 line: "test files::test_foo::files_can_be_sorted_in_descending_order ... ignored",
-                want: Some(TestResult {
+                want: Some(Line::Test(TestResult {
                     module: Some("files::test_foo".into()),
                     name: "files can be sorted in descending order".into(),
                     status: Status::Ignored(None),
-                }),
+                })),
             },
             Case {
                 line: "test tests::pi_to_1m_digits ... ignored, expensive test",
-                want: Some(TestResult {
+                want: Some(Line::Test(TestResult {
                     module: None,
                     name: "pi to 1m digits".into(),
                     status: Status::Ignored(Some("expensive test".into())),
-                }),
+                })),
             },
             Case {
                 line: "test src/lib.rs - find_top_n_largest_files (line 17) ... ok",
@@ -270,11 +378,19 @@ mod tests {
             },
             Case {
                 line: "test output_format::_concise_expects ... ok",
-                want: Some(TestResult {
+                want: Some(Line::Test(TestResult {
                     module: Some("output_format".into()),
                     name: "concise expects".into(),
                     status: Status::Pass,
-                }),
+                })),
+            },
+            Case {
+                line: "Running tests/user.rs (/full/path/to/test)",
+                want: Some(Line::Location { path: String::from("tests/user.rs"), test_type: TestType::Integration }),
+            },
+            Case {
+                line: "Running unittests src/main.rs (/full/path/to/test)",
+                want: Some(Line::Location { path: String::from("src/main.rs"), test_type: TestType::Unit }),
             },
         ]);
         for case in cases {
